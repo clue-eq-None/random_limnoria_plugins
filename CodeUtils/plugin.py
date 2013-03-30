@@ -58,7 +58,7 @@ class CodeUtils(callbacks.Plugin):
         """[--d (" ")] <replace> <replacewith> [<string>,...]"""
         irc.reply(" ".join(args[2:]).replace(args[0], args[1]))
     
-    def rightOf(self, irc, msg, args):
+    def rightof(self, irc, msg, args):
         """[--d (" ")] <replace> <replacewith> [<string>,...]"""
         d = " ".join(args[1:])
         i = d.index(args[0])
