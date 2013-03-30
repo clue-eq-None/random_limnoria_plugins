@@ -56,11 +56,11 @@ class CodeUtils(callbacks.Plugin):
 
     def replace(self, irc, msg, args):
         """[--d (" ")] <replace> <replacewith> [<string>,...]"""
-        irc.reply(args[2:].join(" ").replace(args[0], args[1]))
+        irc.reply(" ".join(args[2:]).replace(args[0], args[1]))
     
     def rightOf(self, irc, msg, args):
         """[--d (" ")] <replace> <replacewith> [<string>,...]"""
-        d = args[1:].join(" ")
+        d = " ".join(args[1:])
         i = d.index(args[0])
         if i == -1: irc.reply("")
         else: irc.reply(d[i:])
