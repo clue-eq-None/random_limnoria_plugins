@@ -68,8 +68,7 @@ class CodeUtils(callbacks.Plugin):
         if cmd.find("%s") == -1: cmd += " %s"
         for line in args[pos+1:]:
             for part in line.split(delim):
-                self._runCommandFunction(irc, msg, cmd % part)
-
+                self._runCommandFunction(irc, msg, cmd.replace("%s", part))
     #foreach = wrap(foreach, [optional(('literal', ('--delim'))), ])
 
 
