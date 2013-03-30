@@ -1,0 +1,194 @@
+###
+# Copyright (c) 2013, sleep
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+#   * Redistributions of source code must retain the above copyright notice,
+#     this list of conditions, and the following disclaimer.
+#   * Redistributions in binary form must reproduce the above copyright notice,
+#     this list of conditions, and the following disclaimer in the
+#     documentation and/or other materials provided with the distribution.
+#   * Neither the name of the author of this software nor the name of
+#     contributors to this software may be used to endorse or promote products
+#     derived from this software without specific prior written consent.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+
+###
+
+import supybot.utils as utils
+from supybot.commands import *
+import supybot.plugins as plugins
+import supybot.ircutils as ircutils
+import supybot.callbacks as callbacks
+from supybot.i18n import PluginInternationalization, internationalizeDocstring
+
+#TODO maybe use supybot threads. i saw them somewhere
+import threading
+from twisted.internet import reactor, protocol
+from twisted.protocols import socks
+import time
+
+import Socks4_Helper
+
+_ = PluginInternationalization('SocksTools')
+
+
+
+
+class ProxyFactory(protocol.Factory):
+    """
+    TODO register myself for lostConnections so i could remove these fuckers
+    """
+    myfucker = []
+    def __init__(self, irc):
+        self.logging = None
+#        irc.reply(str(reactor))
+    def buildProtocol(self, addr):
+        self.myfucker.append(socks.SOCKSv4(self.logging, reactor))
+        return self.myfucker[-1]
+    def stahp(self):
+        for fucker in self.myfucker: fucker.transport.loseConnection()
+        time.sleep(5)
+        for fucker in self.myfucker: fucker.transport.abortConnection()
+
+
+class Twisted_Runner(threading.Thread):
+    def __init__(self): 
+        threading.Thread.__init__(self)
+    def run(self):  
+        try: reactor.run(installSignalHandlers=0)
+        except Exception as e: pass #self.irc.reply(e)
+
+
+class Socks_Runner(threading.Thread):
+    running = False
+    # (user, started, runTime, replyTo, factory, serverCon)
+    # TODO use some kind of syncronized map/queue
+    socksList = {}
+    interval = 0
+    irc = None
+    def __init__(self, irc, interval): 
+        threading.Thread.__init__(self)
+        self.interval = interval
+        self.irc = irc
+#        irc.reply('a', to='SleepProgger')
+#        self.irc.reply('b', to='SleepProgger')
+
+    def _closeSocks4Server(self, port):
+        if port not in self.socksList:
+            return False
+        self.socksList[port][5].stopListening()
+        time.sleep(2)
+        self.socksList[port][4].stahp()
+        return True
+
+    def run(self):
+        running = True 
+        while running:
+            for port in self.socksList.keys()[:]:
+#                self.irc.reply(str(self.socksList[port]))                
+                if self.socksList[port][2] > 0 and self.socksList[port][2] <= time.time():
+                    if self._closeSocks4Server(port):
+                        self.irc.reply('Socks4proxy on port '+str(port)+" closed", to=self.socksList[port][3])
+                        del self.socksList[port]
+            time.sleep(self.interval)
+
+    def insertSocksInfo(self, irc, port, user, started, runTill, replyTo, reactor, factory):
+        if port in self.socksList: return False
+        self.irc = irc
+        self.socksList[port] = [user, started, runTill, replyTo, reactor, factory]
+        return True
+
+    def kill(self, port):
+        if port not in self.socksList:
+            return False
+        self.socksList[port][2] = 1
+        return True
+
+    def portUsed(self, port): return port in self.socksList
+
+    def listProxies(self):
+        #user, started, runTime, replyTo, factory, serverCon
+        return [[port] + p[0:4] for port, p in self.socksList.items()]
+
+            
+
+@internationalizeDocstring
+class SocksTools(callbacks.Plugin):
+    """Add the help for "@plugin help SocksTools" here
+    This should describe *how* to use this plugin."""
+    threaded = True
+#    socksList = {}
+
+    def __init__(self, irc):
+        self.__parent = super(SocksTools, self)
+        self.__parent.__init__(irc)
+        # start twisted
+        thread = Twisted_Runner()
+        thread.daemon = True
+        thread.start()
+        # start my handler
+        self.sthread = Socks_Runner(irc, 10)
+        self.sthread.daemon = True
+        self.sthread.start()
+    
+    def _createSocks4Server(self, irc, port, runTime, user, replyTo):   
+        if self.sthread.portUsed(port):
+            irc.reply("There is already a socks4 proxy running on port " + str(port))
+            return
+        irc.reply('Try to start proxy server for ' + str(runTime) + ' secs on port ' + str(port))
+        factory = ProxyFactory(irc)
+        try: serverCon = reactor.listenTCP(port, factory)
+        except Exception as e:
+            irc.reply("An exception occured: "+str(e))
+            return
+        # TODO make this threadsafe
+        started = time.time()
+        if runTime > 0:
+            runTime += started
+        if self.sthread.insertSocksInfo(irc, port, user, started, runTime, replyTo, factory, serverCon):
+            irc.reply('Proxy on port '+str(port)+' successfully started')
+        else:
+            irc.reply('Failed to start proxy')
+
+
+    def _listSocks4Server(self, irc):
+        irc.reply("%s %s %s %s %s" % ("port", "user", "started", "runtime", "replyTo"))
+        for proxy in self.sthread.listProxies():
+            #user, started, runTime, replyTo
+            irc.reply("%s %s %s %s %s" % (str(proxy[0]), proxy[1], proxy[2], proxy[3], proxy[4]))
+
+    def socks4(self, irc, msg, args, argtype, port, runTime=60):
+#msg.args[0] (or msg.nick if private)
+        """socks4 <add|remove|list> <port> <timeToRunInSec>
+        handle (spawn/remove/list) sicks4 proxies"""
+        if argtype == 'add':
+            if port == None: return
+            # TODO get botname
+            if msg.args[0] == 'feepture': to = msg.nick
+            else: to = msg.args[0]
+            self._createSocks4Server(irc, port, runTime, msg.prefix, to)
+        elif argtype == 'list':
+            self._listSocks4Server(irc)
+        elif argtype == 'remove':
+            if port == None: return
+            self.sthread.kill(port)
+    socks4 = wrap(socks4, [('literal', ('add', 'remove', 'list')), optional('int'), optional('int')])
+
+Class = SocksTools
+
+
+# vim:set shiftwidth=4 softtabstop=4 expandtab textwidth=79:
