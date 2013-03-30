@@ -54,6 +54,17 @@ class CodeUtils(callbacks.Plugin):
             log.exception('Uncaught exception in requested function:')
 
 
+    def replace(self, irc, msg, args):
+        """[--d (" ")] <replace> <replacewith> [<string>,...]"""
+        irc.reply(args[2:].join(" ").replace(args[0], args[1]))
+    
+    def rightOf(self, irc, msg, args):
+        """[--d (" ")] <replace> <replacewith> [<string>,...]"""
+        d = args[1:].join(" ")
+        i = d.index(args[0])
+        if i == -1: irc.reply("")
+        else: irc.reply(d[i:])
+
     def foreachw(self, irc, msg, args):
         """[--d (" ")] <command> [<word>,...]
         """
