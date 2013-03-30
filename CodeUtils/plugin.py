@@ -39,22 +39,6 @@ _ = PluginInternationalization('CodeUtils')
 
 
 
-def splitwordgen(lineGen, maxLineLen, *args):
-    for line in lineGen(*args):
-        if len(line) < maxLineLen: yield line
-        else:
-            last = 0
-            while last < len(line):
-                i = line.rfind(" ", last, last+maxLineLen)
-                if i != -1:
-                    yield line[last:i]
-                    last = i + 1
-                else:
-                    yield line[last:last+maxLineLen]
-                    last = last+maxLineLen
-
-
-
 @internationalizeDocstring
 class CodeUtils(callbacks.Plugin):
     """Add the help for "@plugin help CodeUtils" here
@@ -70,17 +54,23 @@ class CodeUtils(callbacks.Plugin):
             log.exception('Uncaught exception in requested function:')
 
 
+    def foreachw(self, irc, msg, args):
+        """[--d (" ")] <command> [<word>,...]
+        """
+        if len(args) < 3: #TODO
+            return;
+        delim = " "
+        pos = 0
+        if args[0] == '--d':
+            delim = args[1]
+            pos += 2
+        cmd = args[pos]
+        if cmd.find("%s") == -1: cmd += " %s"
+        for line in args[pos+1:]:
+            for part in line.split(delim):
+                self._runCommandFunction(irc, msg, cmd % part)
 
-
-    def fu(self, irc, msg, args):
-        """<Format containing %s (no %i or stuff)> <word> [<word>,...]
-        Do a http://duckduckgo.com api search. For FIELDs and default values see 'ddgfields'.
-        <maxLines> meaning: 0 = skip, -1 = unlimited, else limit to <maxLines> lines.
-        EXAMPLE: ddg --* 0 --Definition 1 cat"""
-        dPrint = 10
-        def ba():        
-            yield " ".join(args)
-        for fu in splitwordgen(ba, 10): irc.reply(fu)
+    #foreach = wrap(foreach, [optional(('literal', ('--delim'))), ])
 
 
     def pyeval(self, irc, msg, args):
@@ -112,7 +102,7 @@ class CodeUtils(callbacks.Plugin):
         if len(args) < 2: return
         if not "%s" in args[0]: args[0] += " %s"
         for word in args[1:]: self._runCommandFunction(irc, msg, args[0] % word)
-#   cif = wrap(cif, ['boolean', 'something', 'something'])
+#  cif = wrap(cif, ['boolean', 'something', 'something'])
 
 Class = CodeUtils
 
