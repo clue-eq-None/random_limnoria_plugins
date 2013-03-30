@@ -63,7 +63,7 @@ class CodeUtils(callbacks.Plugin):
         d = " ".join(args[1:])
         i = d.index(args[0])
         if i == -1: irc.reply("")
-        else: irc.reply(d[i:])
+        else: irc.reply(d[i+1:])
 
     def foreachw(self, irc, msg, args):
         """[--d (" ")] <command> [<word>,...]
