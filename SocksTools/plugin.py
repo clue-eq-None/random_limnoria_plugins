@@ -81,9 +81,9 @@ class SocksTools(callbacks.Plugin):
 #            time.sleep(1)
         else: print "Twisted reactor already running"
 #        time.sleep(5)
-        while not reactor.running:
-            print "wait for reactor"
-            time.sleep(2)
+#        while not reactor.running:
+#            print "wait for reactor"
+#            time.sleep(2)
         print reactor.callFromThread(self._twistedLoop, irc)
 
     def _twistedLoop(self, irc):
