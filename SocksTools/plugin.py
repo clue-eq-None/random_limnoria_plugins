@@ -77,7 +77,7 @@ class SocksTools(callbacks.Plugin):
             print "starting up twisted reactor"
             thread = Twisted_Runner()
             thread.daemon = True
-            thread.start()
+#            thread.start()
 #            time.sleep(1)
         else: print "Twisted reactor already running"
 #        time.sleep(5)
