@@ -93,7 +93,7 @@ class SocksTools(callbacks.Plugin):
                 values[3].reply('Closing proxy on port '+str(port))
                 values[5].stopListening()
                 values[4].closeConnection()
-        print "loop"
+#        print "loop"
 #        for proxy in self.proxies.values(): proxy[3].reply("loop")
         reactor.callLater(self.checkInterval, self._twistedLoop, irc)
 
