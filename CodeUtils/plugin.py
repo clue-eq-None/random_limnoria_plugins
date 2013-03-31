@@ -37,6 +37,11 @@ from supybot.i18n import PluginInternationalization, internationalizeDocstring
 
 _ = PluginInternationalization('CodeUtils')
 
+# just for pyeval/exec ;)
+# no harm in removing this imports
+from twisted.internet import reactor, protocol
+from twisted.protocols import socks
+import time
 
 
 @internationalizeDocstring
@@ -44,6 +49,11 @@ class CodeUtils(callbacks.Plugin):
     """Add the help for "@plugin help CodeUtils" here
     This should describe *how* to use this plugin."""
     threaded = True
+
+    def __init__(self, irc):
+        self.__parent = super(CodeUtils, self)
+        self.__parent.__init__(irc)
+#        print "amithere?: ", irc.getCallback('CodeUtils')
 
     def _runCommandFunction(self, irc, msg, command):
         """Run a command from message, as if command was sent over IRC."""
@@ -112,6 +122,11 @@ class CodeUtils(callbacks.Plugin):
         if len(args) < 2: return
         if not "%s" in args[0]: args[0] += " %s"
         for word in args[1:]: self._runCommandFunction(irc, msg, args[0] % word)
+
+    def die(self):
+        print "Idie"
+        #self.__parent.die()
+
 #  cif = wrap(cif, ['boolean', 'something', 'something'])
 
 Class = CodeUtils

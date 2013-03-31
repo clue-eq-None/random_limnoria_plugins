@@ -64,7 +64,7 @@ class MoreStrings(callbacks.Plugin):
 ###
     def rof(self, irc, msg, args, caseSensitive, splitby, word):
         """<splitBy><text>
-        TODO do doc
+        return text after last <splitBy> occurence. Or " " if not found
         """
         if caseSensitive != None: i = word.lower().rfind(splitby.lower())           
         else: i = word.rfind(splitby)
@@ -74,6 +74,7 @@ class MoreStrings(callbacks.Plugin):
     rof = wrap(rof, [optional(('literal', '--i')), 'anything', 'text'])
     def lof(self, irc, msg, args, caseSensitive, splitby, word):
         """<splitBy><text>
+        return text before the first <splitBy> occurence. Or " " if not found
         TODO do doc
         """
         if caseSensitive != None: i = word.lower().find(splitby.lower())           
@@ -83,6 +84,16 @@ class MoreStrings(callbacks.Plugin):
         else: irc.reply(word[:i-1])
     lof = wrap(lof, [optional(('literal', '--i')), 'anything', 'text'])
 
+
+###
+# Misc stuff (should go to other packages one day TODO)
+###
+    def qprint(self, irc, msg, args, text):
+        """<Text>...
+            simple print but always answer as query (private)
+        """
+        irc.reply(text, private=True)
+    qprint = wrap(qprint, ['text'])
 
 Class = MoreStrings
 

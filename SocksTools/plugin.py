@@ -46,12 +46,15 @@ import Socks4_Helper
 _ = PluginInternationalization('SocksTools')
 
 class Twisted_Runner(threading.Thread):
+    ticks = 0
     def __init__(self): 
         threading.Thread.__init__(self)
     def run(self):  
         try: reactor.run(installSignalHandlers=0)
         except Exception as e: print "twisted e:", str(e) #self.irc.reply(e)
-       
+    def getticks(): return ticks
+    def incTick(): self.ticks += 1      
+tick = 1
 
 @internationalizeDocstring
 class SocksTools(callbacks.Plugin):
@@ -64,25 +67,35 @@ class SocksTools(callbacks.Plugin):
     # factory => port
     facToPort = {}
     checkInterval = 10
+    # needed to handle reloads without creating one twisted cb each time
+    lastTwistedCB = 0
     def __init__(self, irc):
         self.__parent = super(SocksTools, self)
         self.__parent.__init__(irc)
         # start twisted TODO if not already running
-#        thread = Twisted_Runner()
-#        thread.daemon = True
-#        thread.start()
+        if not reactor.running:
+            print "starting up twisted reactor"
+            thread = Twisted_Runner()
+            thread.daemon = True
+            thread.start()
+#            time.sleep(1)
+        else: print "Twisted reactor already running"
 #        time.sleep(5)
-        reactor.callLater(5, self._twistedLoop)
+        while not reactor.running:
+            print "wait for reactor"
+            time.sleep(2)
+        print reactor.callFromThread(self._twistedLoop, irc)
 
-    def _twistedLoop(self):
+    def _twistedLoop(self, irc):
+        if irc.getCallback('SocksTools') == None: return
         for port, values in self.proxies.items():
             if values[2] > 0 and values[2] <= time.time():
                 values[3].reply('Closing proxy on port '+str(port))
                 values[5].stopListening()
                 values[4].closeConnection()
-#        print "loop"
+        print "loop"
 #        for proxy in self.proxies.values(): proxy[3].reply("loop")
-        reactor.callLater(self.checkInterval, self._twistedLoop)
+        reactor.callLater(self.checkInterval, self._twistedLoop, irc)
 
     def _proxyClosedCb(self, proxy):
         if proxy not in self.facToPort:
@@ -135,6 +148,28 @@ class SocksTools(callbacks.Plugin):
         elif argtype == 'remove':
             self._removeSocks4Server(irc, port)
     socks4 = wrap(socks4, [('literal', ('add', 'remove', 'list')), optional('int'), optional('int')])
+
+    def die(self):        
+        # we don't want zombie thread do we ? ;)
+        print "Del SocksTools"
+        # dirty but yeah
+        for i in xrange(0,2):
+            for calls in reactor.getDelayedCalls():
+                if calls.func == self._twistedLoop and calls.active():
+                    print "cancel", calls
+                    try: calls.cancel()
+                    except Exception as e: print e
+            time.sleep(1)
+        for port, values in self.proxies.items():
+            print "close port ", port
+            values[3].reply('Closing proxy on port '+str(port))
+            values[5].stopListening()
+            values[4].closeConnection()     
+        for calls in reactor.getDelayedCalls():
+            if calls.func == self._twistedLoop and calls.active():
+                print "cancel", calls
+                try: calls.cancel()
+                except Exception as e: print e
 
 Class = SocksTools
 
