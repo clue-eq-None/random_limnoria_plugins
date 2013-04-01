@@ -28,6 +28,24 @@
 
 ###
 
+
+##
+# This is  a plugin to spawn socks4proxies using twisted.
+# It is checking if twisted is 1. used by supybot as driver
+# or 2. is already loaded.
+# If not it will spawn a (daemon)thread to run the twisted mainloop.
+# This mainloop stays alive until the bot is shutting down. This enable
+# other plugin to register oneself for twisted stuff. Anyway i suggest every
+# one in need of the twisted framework should check for the existence of
+# twisted and if it isn't running allready, start it.
+# fuba using .TODO . "conf.supybot.drivers.module"
+# BUGS/TODO
+#  - 
+#
+##
+
+
+import supybot.conf as conf
 import supybot.utils as utils
 from supybot.commands import *
 import supybot.plugins as plugins
@@ -51,6 +69,7 @@ class Twisted_Runner(threading.Thread):
         threading.Thread.__init__(self)
     def run(self):  
         try: reactor.run(installSignalHandlers=0)
+#        try: reactor.run()
         except Exception as e: print "twisted e:", str(e) #self.irc.reply(e)
     def getticks(): return ticks
     def incTick(): self.ticks += 1      
@@ -73,13 +92,13 @@ class SocksTools(callbacks.Plugin):
         self.__parent = super(SocksTools, self)
         self.__parent.__init__(irc)
         # start twisted TODO if not already running
-        if not reactor.running:
+        if (not reactor.running) and conf.supybot.drivers.module != "Twisted":
             print "starting up twisted reactor"
             thread = Twisted_Runner()
             thread.daemon = True
-#            thread.start()
-#            time.sleep(1)
+            thread.start()
         else: print "Twisted reactor already running"
+#   Shouldn't be needed anymore ?
 #        time.sleep(5)
 #        while not reactor.running:
 #            print "wait for reactor"
@@ -94,7 +113,6 @@ class SocksTools(callbacks.Plugin):
                 values[5].stopListening()
                 values[4].closeConnection()
 #        print "loop"
-#        for proxy in self.proxies.values(): proxy[3].reply("loop")
         reactor.callLater(self.checkInterval, self._twistedLoop, irc)
 
     def _proxyClosedCb(self, proxy):
@@ -141,7 +159,6 @@ class SocksTools(callbacks.Plugin):
         handle (spawn/remove/list) sicks4 proxies"""
         if argtype == 'add':
             if port == None: return
-            # TODO get botname
             self._createSocks4Server(irc, port, runTime, msg.prefix)
         elif argtype == 'list':
             self._listSocks4Server(irc)

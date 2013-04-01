@@ -123,6 +123,12 @@ class CodeUtils(callbacks.Plugin):
         if not "%s" in args[0]: args[0] += " %s"
         for word in args[1:]: self._runCommandFunction(irc, msg, args[0] % word)
 
+    def irange(self, irc, msg, args, f, t):
+        """ """
+        if f > t or t-f > 50: return
+        irc.reply(" ".join([str(x) for x in xrange(f, t+1)]))
+    irange = wrap(irange, ['int', 'int'])
+
     def die(self):
         print "Idie"
         #self.__parent.die()
